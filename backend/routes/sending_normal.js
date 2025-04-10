@@ -7,7 +7,7 @@ const userVerification=require("../middleware/login_middleware");
 
 
 
-router.get("/check-user", (req, res) => {
+router.get("/check-user",userVerification, (req, res) => {
     const { username } = req.body;
   
     const query = `SELECT * FROM users WHERE user_name = ?`;
@@ -31,7 +31,7 @@ router.get("/check-user", (req, res) => {
   });
 
 
-  router.post("/transfer", async (req, res) => {
+  router.post("/transfer",userVerification, async (req, res) => {
     const { sender, receiver, amount, password } = req.body;
   
     if (!sender || !receiver || !amount || !password)
@@ -50,7 +50,7 @@ router.get("/check-user", (req, res) => {
         return res.status(400).json({ message: "❌ Insufficient balance." });
       }
   
-      db.beginTransaction(err => {
+        db.beginTransaction(err => {
         if (err) return res.status(500).json({ message: "Transaction start error." });
     
         const newSenderBalance = sender.balance - amount;
@@ -97,6 +97,8 @@ router.get("/check-user", (req, res) => {
      
     });
   });
+
+  module.exports=router;
   
 
  
