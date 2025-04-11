@@ -31,24 +31,21 @@ router.get("/check-user",userVerification, (req, res) => {
 
 
   router.post("/transfer", userVerification, async (req, res) => {
-    const { receiver, amount, password, type = "normal", purpose = null } = req.body;
-    const sender_username = req.user.user_name;
-    const receiver_username = receiver;
+    const { receiver, amount, password, type="normal", purpose=null } = req.body;
+    const sender = req.user.user_name;
   
     if (!receiver || !amount || !password)
       return res.status(400).json({ message: "All fields are required." });
-
-    db.query("SELECT * FROM users WHERE user_name = ?", [sender_username], async (err, results) => {
-      if (err || results.length === 0) {
-        console.error("Sender lookup error:", err);
+  
+    db.query("SELECT * FROM users WHERE user_name = ?", [sender], async (err, results) => {
+      if (err || results.length === 0)
         return res.status(400).json({ message: "Sender not found." });
-      }
   
       const user = results[0];
       const match = await bcrypt.compare(password, user.password);
-      if (!match) return res.status(401).json({ message: "Incorrect password." });
+      if (!match)
+        return res.status(401).json({ message: "Incorrect password." });
   
- 
       if (parseFloat(user.balance) < parseFloat(amount)) {
         return res.status(400).json({ message: "❌ Insufficient balance." });
       }
@@ -58,36 +55,98 @@ router.get("/check-user",userVerification, (req, res) => {
   
         const newSenderBalance = parseFloat(user.balance) - parseFloat(amount);
         const updateSender = "UPDATE users SET balance = ? WHERE user_name = ?";
-        db.query(updateSender, [newSenderBalance, sender_username], err => {
-          if (err) return db.rollback(() => res.status(500).json({ message: "Error updating sender balance." }));
+        db.query(updateSender, [newSenderBalance, sender], err => {
+          if (err)
+            return db.rollback(() =>
+              res.status(500).json({ message: "Error updating sender balance." })
+            );
   
           const updateReceiver = "UPDATE users SET balance = balance + ? WHERE user_name = ?";
-          db.query(updateReceiver, [amount, receiver_username], err => {
-            if (err) return db.rollback(() => res.status(500).json({ message: "Error updating receiver balance." }));
+          db.query(updateReceiver, [amount, receiver], err => {
+            if (err)
+              return db.rollback(() =>
+                res.status(500).json({ message: "Error updating receiver balance." })
+              );
   
             const insertPayment = `
               INSERT INTO payment (sender_username, receiver_username, done_at, amount, approved, status, type)
               VALUES (?, ?, NOW(), ?, 'a', 'done', ?)
             `;
-            db.query(insertPayment, [sender_username, receiver_username, amount, type], err => {
-              if (err) return db.rollback(() => res.status(500).json({ message: "Error recording payment." }));
+            db.query(insertPayment, [sender, receiver, amount, type], err => {
+              if (err)
+                return db.rollback(() =>
+                  res.status(500).json({ message: "Error recording payment." })
+                );
   
+              // Handle extra_bal insert/update
               if (type === "extra") {
-                const insertExtra = `
-                  INSERT INTO extra_bal (sender_username, receiver_username, amount, purpose)
-                  VALUES (?, ?, ?, ?)
+                const checkExtra = `
+                  SELECT * FROM extra_bal
+                  WHERE sender_username = ? AND receiver_username = ? AND purpose = ?
                 `;
-                db.query(insertExtra, [sender_username, receiver_username, amount, purpose], err => {
-                  if (err) return db.rollback(() => res.status(500).json({ message: "Error in extra_bal." }));
+                db.query(checkExtra, [sender, receiver, purpose], (err, results) => {
+                  if (err)
+                    return db.rollback(() =>
+                      res.status(500).json({ message: "Error checking extra_bal." })
+                    );
   
-                  db.commit(err => {
-                    if (err) return db.rollback(() => res.status(500).json({ message: "Commit failed." }));
-                    return res.status(200).json({ message: "✅ Transaction successful (extra)." });
-                  });
+                  if (results.length > 0) {
+                    const existingAmount = parseFloat(results[0].amount);
+                    const newAmount = existingAmount + parseFloat(amount);
+  
+                    const updateExtra = `
+                      UPDATE extra_bal
+                      SET amount = ?
+                      WHERE sender_username = ? AND receiver_username = ? AND purpose = ?
+                    `;
+                    db.query(updateExtra, [newAmount, sender, receiver, purpose], err => {
+                      if (err)
+                        return db.rollback(() =>
+                          res.status(500).json({ message: "Error updating extra_bal." })
+                        );
+  
+                      db.commit(err => {
+                        if (err)
+                          return db.rollback(() =>
+                            res.status(500).json({ message: "Commit failed." })
+                          );
+                        return res.status(200).json({
+                          message: "✅ Transaction successful (extra updated)."
+                        });
+                      });
+                    });
+  
+                  } else {
+                    const insertExtra = `
+                      INSERT INTO extra_bal (sender_username, receiver_username, amount, purpose)
+                      VALUES (?, ?, ?, ?)
+                    `;
+                    db.query(insertExtra, [sender, receiver, amount, purpose], err => {
+                      if (err)
+                        return db.rollback(() =>
+                          res.status(500).json({ message: "Error inserting into extra_bal." })
+                        );
+  
+                      db.commit(err => {
+                        if (err)
+                          return db.rollback(() =>
+                            res.status(500).json({ message: "Commit failed." })
+                          );
+                        return res.status(200).json({
+                          message: "✅ Transaction successful (extra inserted)."
+                        });
+                      });
+                    });
+                  }
                 });
+  
               } else {
+                // Normal type transaction
                 db.commit(err => {
-                  if (err) return db.rollback(() => res.status(500).json({ message: "Commit failed." }));
+                  if (err)
+                    return db.rollback(() =>
+                      res.status(500).json({ message: "Commit failed." })
+                    );
                   return res.status(200).json({ message: "✅ Transaction successful." });
                 });
               }
