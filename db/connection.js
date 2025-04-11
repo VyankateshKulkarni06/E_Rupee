@@ -7,6 +7,14 @@ const connection = mysql.createConnection({
   database: 'E_Rupee'
 });
 
+connection.connect((err) => {
+  if (err) {
+    console.error('❌ Error connecting to the database:', err.message);
+    return;
+  }
+  console.log('🟢 Connected to the MySQL database!');
+});
+
 const Users = `
   CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(50) not null,
