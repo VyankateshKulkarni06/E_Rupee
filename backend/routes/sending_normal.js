@@ -29,7 +29,6 @@ router.get("/check-user",userVerification, (req, res) => {
     });
   });
 
-
   router.post("/transfer", userVerification, async (req, res) => {
     const { receiver, amount, password, type="normal", purpose=null } = req.body;
     const sender = req.user.user_name;
@@ -61,8 +60,17 @@ router.get("/check-user",userVerification, (req, res) => {
               res.status(500).json({ message: "Error updating sender balance." })
             );
   
-          const updateReceiver = "UPDATE users SET balance = balance + ? WHERE user_name = ?";
-          db.query(updateReceiver, [amount, receiver], err => {
+          // Check if transaction is of type "extra"
+          if (type !== "extra") {
+            // Only update receiver's balance for non-extra transaction types
+            const updateReceiver = "UPDATE users SET balance = balance + ? WHERE user_name = ?";
+            db.query(updateReceiver, [amount, receiver], handleReceiverUpdate);
+          } else {
+            // Skip receiver balance update for "extra" type
+            handleReceiverUpdate(null);
+          }
+  
+          function handleReceiverUpdate(err) {
             if (err)
               return db.rollback(() =>
                 res.status(500).json({ message: "Error updating receiver balance." })
@@ -151,7 +159,7 @@ router.get("/check-user",userVerification, (req, res) => {
                 });
               }
             });
-          });
+          }
         });
       });
     });
