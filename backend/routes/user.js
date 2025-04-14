@@ -7,7 +7,6 @@ const secret = require("../../db/secret");
 const saltRounds = 7;
 const { send_otp, verify_otp } = require("../controllers/otp_email");
 
-// Register Step 1: User submits name, username, email
 router.post("/register-step1", async (req, res) => {
   const { name, user_name, email } = req.body;
 
