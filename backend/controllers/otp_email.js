@@ -8,8 +8,8 @@ const transporter = nodemailer.createTransport({
     port: 587,
     secure: false, // true for port 465, false for 587
     auth: {
-      user: 'kulkarnivyankatesh26@gmail.com',
-      pass: 'qkhc edeu qgzx haxy'
+      user: 'erupee2025@gmail.com',
+      pass: 'yahu kkwu fuzu lutv'
     }
   });
   
@@ -25,7 +25,7 @@ function send_otp(email) {
   otpStore[email] = { otp, expiresAt };
 
   const mailOptions = {
-    from: 'kulkarnivyankatesh26@gmail.com',
+    from: 'erupee2025@gmail.com',
     to: email,
     subject: 'Your OTP Code',
     text: `Your OTP is: ${otp}`
