@@ -19,7 +19,6 @@ router.get("/check-user",userVerification, (req, res) => {
         return res.status(404).json({ exists: false, message: "❌ User not found" });
       }
   
-      // Send user name back
       const user = results[0];
       return res.status(200).json({
         exists: true,
@@ -65,123 +64,69 @@ router.get("/check-user",userVerification, (req, res) => {
   
           if (type !== "extra") {
             const updateReceiver = "UPDATE users SET balance = balance + ? WHERE user_name = ?";
-            db.query(updateReceiver, [amount, receiver], handleReceiverUpdate);
-          } else {
-            handleReceiverUpdate(null);
-          }
-  
-          function handleReceiverUpdate(err) {
-            if (err) {
-              return db.rollback(() => {
-                console.error("Error updating receiver balance:", err);
-                res.status(500).json({ message: "Error updating receiver balance." });
-              });
-            }
-  
-            const insertPayment = `
-  INSERT INTO payment (sender_username, receiver_username, done_at, amount, status_first, status, type)
-  VALUES (?, ?, NOW(), ?, 'a', 'done', ?)
-`;
-
-  
-            console.log("Inserting payment:", { sender, receiver, amount, type });
-  
-            db.query(insertPayment, [sender, receiver, amount, type], err => {
+            db.query(updateReceiver, [amount, receiver], err => {
               if (err) {
-                console.error("Error inserting into payment:", err);
+                return db.rollback(() => {
+                  console.error("Error updating receiver balance:", err);
+                  res.status(500).json({ message: "Error updating receiver balance." });
+                });
+              }
+  
+              insertPayment(null); // normal transaction, no bal_id
+            });
+          } else {
+            // Extra transaction: insert into extra_bal first
+            const insertExtra = `
+              INSERT INTO extra_bal (sender_username, receiver_username, amount, purpose)
+              VALUES (?, ?, ?, ?)
+            `;
+            db.query(insertExtra, [sender, receiver, amount, purpose], (err, result) => {
+              if (err) {
+                console.error("Error inserting into extra_bal:", err);
                 return db.rollback(() =>
-                  res.status(500).json({ message: "Error recording payment.", error: err.message })
+                  res.status(500).json({ message: "Error inserting into extra_bal." })
                 );
               }
   
-              if (type === "extra") {
-                const checkExtra = `
-                  SELECT * FROM extra_bal
-                  WHERE sender_username = ? AND receiver_username = ? AND purpose = ?
-                `;
-                db.query(checkExtra, [sender, receiver, purpose], (err, results) => {
-                  if (err) {
-                    console.error("Error checking extra_bal:", err);
-                    return db.rollback(() =>
-                      res.status(500).json({ message: "Error checking extra_bal." })
-                    );
-                  }
+              const bal_id = result.insertId;
+              insertPayment(bal_id); // now insert payment with bal_id
+            });
+          }
   
-                  if (results.length > 0) {
-                    const existingAmount = parseFloat(results[0].amount);
-                    const newAmount = existingAmount + parseFloat(amount);
-  
-                    const updateExtra = `
-                      UPDATE extra_bal
-                      SET amount = ?
-                      WHERE sender_username = ? AND receiver_username = ? AND purpose = ?
-                    `;
-                    db.query(updateExtra, [newAmount, sender, receiver, purpose], err => {
-                      if (err) {
-                        console.error("Error updating extra_bal:", err);
-                        return db.rollback(() =>
-                          res.status(500).json({ message: "Error updating extra_bal." })
-                        );
-                      }
-  
-                      db.commit(err => {
-                        if (err) {
-                          console.error("Commit failed:", err);
-                          return db.rollback(() =>
-                            res.status(500).json({ message: "Commit failed." })
-                          );
-                        }
-                        return res.status(200).json({
-                          message: "✅ Transaction successful (extra updated)."
-                        });
-                      });
-                    });
-  
-                  } else {
-                    const insertExtra = `
-                      INSERT INTO extra_bal (sender_username, receiver_username, amount, purpose)
-                      VALUES (?, ?, ?, ?)
-                    `;
-                    db.query(insertExtra, [sender, receiver, amount, purpose], err => {
-                      if (err) {
-                        console.error("Error inserting into extra_bal:", err);
-                        return db.rollback(() =>
-                          res.status(500).json({ message: "Error inserting into extra_bal." })
-                        );
-                      }
-  
-                      db.commit(err => {
-                        if (err) {
-                          console.error("Commit failed:", err);
-                          return db.rollback(() =>
-                            res.status(500).json({ message: "Commit failed." })
-                          );
-                        }
-                        return res.status(200).json({
-                          message: "✅ Transaction successful (extra inserted)."
-                        });
-                      });
-                    });
-                  }
-                });
-  
-              } else {
-                db.commit(err => {
-                  if (err) {
-                    console.error("Commit failed:", err);
-                    return db.rollback(() =>
-                      res.status(500).json({ message: "Commit failed." })
-                    );
-                  }
-                  return res.status(200).json({ message: "✅ Transaction successful." });
-                });
+          function insertPayment(bal_id) {
+            const insertPaymentQuery = `
+              INSERT INTO payment (sender_username, receiver_username, done_at, amount, status_first, status, type, bal_id)
+              VALUES (?, ?, NOW(), ?, 'a', 'done', ?, ?)
+            `;
+            db.query(insertPaymentQuery, [sender, receiver, amount, type, bal_id], err => {
+              if (err) {
+                console.error("Error inserting into payment:", err);
+                return db.rollback(() =>
+                  res.status(500).json({ message: "Error recording payment." })
+                );
               }
+  
+              db.commit(err => {
+                if (err) {
+                  console.error("Commit failed:", err);
+                  return db.rollback(() =>
+                    res.status(500).json({ message: "Commit failed." })
+                  );
+                }
+  
+                const msg =
+                  type === "extra"
+                    ? "✅ Transaction successful (extra created)."
+                    : "✅ Transaction successful.";
+                return res.status(200).json({ message: msg });
+              });
             });
           }
         });
       });
     });
   });
+  
   
   // Route for requesting permission to use extra balance for a transaction
 router.post("/permission_extra_bal", userVerification, async (req, res) => {
@@ -215,7 +160,6 @@ router.post("/permission_extra_bal", userVerification, async (req, res) => {
           });
         }
         
-        // Now fetch the extra_bal record to get more details and check availability
         db.query(
           "SELECT * FROM extra_bal WHERE bal_id = ?",
           [bal_id],
@@ -266,7 +210,7 @@ router.post("/permission_extra_bal", userVerification, async (req, res) => {
                 (err, result) => {
                   if (err) {
                     return db.rollback(() => 
-                      res.status(500).json({ message: "Error creating pending request." })
+                      res.status(500).json({ message: "Error creating pending request.",err })
                     );
                   }
                   

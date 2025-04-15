@@ -55,7 +55,7 @@ const ExtraBal= `
   );
 `;
 
-const createPendingReqTable = `
+const pending_req = `
   CREATE TABLE IF NOT EXISTS pending_req (
     pending_id INT AUTO_INCREMENT PRIMARY KEY NOT NULL,
     requester_username VARCHAR(50) NOT NULL,
@@ -76,6 +76,10 @@ const createPendingReqTable = `
 connection.query(Users, (err, results) => {
   if (err) throw err;
   console.log("✅ Users table ready.");
+});
+connection.query(pending_req, (err, results) => {
+  if (err) throw err;
+  console.log("✅ Pending table ready.");
 });
 connection.query(ExtraBal, (err, results) => {
   if (err) throw err;
