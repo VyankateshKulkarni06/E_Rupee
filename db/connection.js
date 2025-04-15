@@ -17,42 +17,61 @@ connection.connect((err) => {
 
 const Users = `
   CREATE TABLE IF NOT EXISTS users (
-    name VARCHAR(50) not null,
-    user_name VARCHAR(50) PRIMARY KEY not null,
-    email VARCHAR(50) not null,
-    balance DECIMAL(10,2) not null default 100,
-    password VARCHAR(255) not null
+    name VARCHAR(50) NOT NULL,
+    user_name VARCHAR(50) PRIMARY KEY NOT NULL,
+    email VARCHAR(50) NOT NULL,
+    balance DECIMAL(10,2) NOT NULL DEFAULT 100,
+    password VARCHAR(255) NOT NULL
   );
 `;
 
 const Payment = `
   CREATE TABLE IF NOT EXISTS payment (
-    payment_id INT AUTO_INCREMENT PRIMARY KEY  NOT NULL,
+    payment_id INT AUTO_INCREMENT PRIMARY KEY NOT NULL,
     sender_username VARCHAR(50) NOT NULL,
     receiver_username VARCHAR(50) NOT NULL,
-    done_at DATE NOT NULL,
+    done_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     amount DECIMAL(10,2) NOT NULL,
-    approved ENUM('a', 'p', 'r') NOT NULL,
+    status_first ENUM('a', 'p', 'r') NOT NULL,
     status ENUM('done', 'pending', 'failed') NOT NULL,
     type ENUM('extra', 'normal') NOT NULL,
+    bal_id INT,
     FOREIGN KEY (sender_username) REFERENCES users(user_name) ON DELETE CASCADE,
     FOREIGN KEY (receiver_username) REFERENCES users(user_name) ON DELETE CASCADE
   );
 `;
 
-const ExtraBal = `
+const ExtraBal= `
   CREATE TABLE IF NOT EXISTS extra_bal (
     bal_id INT AUTO_INCREMENT PRIMARY KEY NOT NULL,
     sender_username VARCHAR(50) NOT NULL,
     receiver_username VARCHAR(50) NOT NULL,
     amount DECIMAL(10,2) NOT NULL,
     purpose VARCHAR(50),
+    status ENUM('a', 'p', 'r') NOT NULL DEFAULT 'p',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sender_username) REFERENCES users(user_name) ON DELETE CASCADE,
     FOREIGN KEY (receiver_username) REFERENCES users(user_name) ON DELETE CASCADE
   );
 `;
 
-
+const createPendingReqTable = `
+  CREATE TABLE IF NOT EXISTS pending_req (
+    pending_id INT AUTO_INCREMENT PRIMARY KEY NOT NULL,
+    requester_username VARCHAR(50) NOT NULL,
+    receiver_username VARCHAR(50) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    purpose VARCHAR(50),
+    status ENUM('a', 'p', 'r') NOT NULL DEFAULT 'p',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    original_sender VARCHAR(50) NOT NULL,
+    bal_id INT NOT NULL,
+    FOREIGN KEY (requester_username) REFERENCES users(user_name) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_username) REFERENCES users(user_name) ON DELETE CASCADE,
+    FOREIGN KEY (original_sender) REFERENCES users(user_name) ON DELETE CASCADE,
+    FOREIGN KEY (bal_id) REFERENCES extra_bal(bal_id) ON DELETE CASCADE
+  );
+`;
 //apr:approved pending rejected
 connection.query(Users, (err, results) => {
   if (err) throw err;
