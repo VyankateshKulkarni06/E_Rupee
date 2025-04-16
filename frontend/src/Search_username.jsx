@@ -56,6 +56,15 @@ function SearchUsername() {
   const goBack = () => {
     window.history.back();
   };
+  
+  // New function to handle user selection
+  const selectUser = (username) => {
+    // Store the selected username in localStorage
+    localStorage.setItem('receiver_username', username);
+    
+    // Navigate to the payment gateway page
+    window.location.href = '/payment';
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -114,7 +123,10 @@ function SearchUsername() {
                     <p className="text-xs text-gray-500">{user.name}</p>
                   </div>
                 </div>
-                <button className="bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full text-xs font-medium">
+                <button 
+                  className="bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full text-xs font-medium"
+                  onClick={() => selectUser(user.user_name)}
+                >
                   Select
                 </button>
               </div>

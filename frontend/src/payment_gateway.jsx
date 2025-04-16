@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { User as UserIcon, Lock, CreditCard, Shield, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User as UserIcon, Lock, Shield, ChevronDown, Check, AlertCircle } from 'lucide-react';
 
 const InputField = ({ label, type, value, onChange, icon: Icon, placeholder, name }) => (
   <div className="mb-6">
@@ -43,13 +43,92 @@ function PaymentDashboard() {
   const [transactionType, setTransactionType] = useState('extra');
   const [purpose, setPurpose] = useState('');
   const [password, setPassword] = useState('');
-  const [receiverName, setReceiverName] = useState('Ranaavir Enterprises');
+  const [receiverName, setReceiverName] = useState('kulkarni');
   const [isReceiverOpen, setIsReceiverOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [transactionStatus, setTransactionStatus] = useState(null); // 'success', 'error', or null
+  const [errorMessage, setErrorMessage] = useState('');
+  const [transactionAmount, setTransactionAmount] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
 
-  const handleSubmit = (e) => {
+  // Load receiver name and check token on component mount
+  useEffect(() => {
+    const savedReceiverName = localStorage.getItem('receiver_username');
+    if (savedReceiverName) {
+      setReceiverName(savedReceiverName);
+    }
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setIsAuthenticated(false);
+      setTransactionStatus('error');
+      setErrorMessage('No authentication token found. Please log in.');
+    }
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log({ amount, transactionType, purpose, password });
-    // Add payment logic here
+
+    if (!amount || !password) {
+      setErrorMessage('Please enter amount and password');
+      setTransactionStatus('error');
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setIsAuthenticated(false);
+      setTransactionStatus('error');
+      setErrorMessage('No authentication token found. Please log in.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setTransactionStatus(null);
+    setErrorMessage('');
+
+    try {
+      const payloadData = {
+        receiver: receiverName,
+        amount: parseFloat(amount),
+        password: password,
+        type: transactionType,
+        purpose: purpose || 'project_bonus',
+      };
+      console.log("token",token);
+
+      const response = await fetch('http://localhost:5001/transact/transfer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'token': `Bearer ${token}`, // Ensure token is sent in the correct header
+        },
+        body: JSON.stringify(payloadData),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.done === true) {
+        setTransactionStatus('success');
+        setTransactionAmount(amount);
+        // Reset form fields after successful transaction
+        setAmount('');
+        setPurpose('');
+        setPassword('');
+      } else {
+        setTransactionStatus('error');
+        if (result.message === 'Access denied. No token provided.') {
+          setIsAuthenticated(false);
+          setErrorMessage('Authentication failed. Please log in again.');
+        } else {
+          setErrorMessage(result.message || 'Transaction failed');
+        }
+      }
+    } catch (error) {
+      setTransactionStatus('error');
+      setErrorMessage('Network error. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleAmountChange = (e) => {
@@ -57,6 +136,15 @@ function PaymentDashboard() {
     if (value === '' || parseInt(value) >= 0) {
       setAmount(value);
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('receiver_username');
+    setIsAuthenticated(false);
+    setTransactionStatus('error');
+    setErrorMessage('You have been logged out. Please log in to continue.');
+    // Optionally redirect to login page here if you have a routing setup
   };
 
   const amountDisplay = amount ? `₹${amount}` : 'Enter Amount';
@@ -75,7 +163,7 @@ function PaymentDashboard() {
             onClick={toggleReceiver}
             className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-600 cursor-pointer flex items-center"
           >
-            Rajeshahi Canteen <ChevronDown size={20} className="ml-2" />
+            {receiverName} <ChevronDown size={20} className="ml-2" />
           </span>
           {isReceiverOpen && (
             <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-white border border-indigo-100 rounded-xl shadow-lg z-10">
@@ -95,7 +183,7 @@ function PaymentDashboard() {
                 onClick={toggleReceiver}
                 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-600 cursor-pointer flex items-center"
               >
-                Rajeshahi Canteen <ChevronDown size={20} className="ml-2" />
+                {receiverName} <ChevronDown size={20} className="ml-2" />
               </span>
               {isReceiverOpen && (
                 <div className="absolute mt-2 w-48 bg-white border border-indigo-100 rounded-xl shadow-lg z-10">
@@ -106,56 +194,111 @@ function PaymentDashboard() {
           </div>
 
           <div className="p-6 space-y-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="text-center mb-8">
-                <input
-                  type="text"
-                  value={amountDisplay}
-                  onChange={handleAmountChange}
-                  className="w-40 mx-auto text-center text-xl font-bold py-3 rounded-xl focus:outline-none transition-all duration-200 bg-transparent border-none text-indigo-800"
-                  placeholder={amountDisplay}
-                  style={{ color: amount ? 'indigo-800' : 'gray-600' }}
-                />
+            {transactionStatus === 'success' ? (
+              <div className="flex flex-col items-center justify-center py-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 animate-bounce">
+                  <Check size={32} className="text-green-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Payment Successful!</h2>
+                <p className="text-gray-600 mb-2">
+                  Your payment of <span className="font-semibold">₹{transactionAmount}</span> to {receiverName} has been processed.
+                </p>
+                <p className="text-green-600 font-medium mb-6">✅ Transaction completed</p>
+                <button
+                  onClick={() => setTransactionStatus(null)}
+                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Make Another Payment
+                </button>
               </div>
+            ) : (
+              <div className="space-y-6">
+                {!isAuthenticated ? (
+                  <div className="flex flex-col items-center justify-center py-6">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start mb-4 w-full">
+                      <AlertCircle size={20} className="text-red-500 mr-2 mt-0.5" />
+                      <p className="text-red-700 text-sm">{errorMessage}</p>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                    >
+                      Log In
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    {transactionStatus === 'error' && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start mb-4">
+                        <AlertCircle size={20} className="text-red-500 mr-2 mt-0.5" />
+                        <p className="text-red-700 text-sm">{errorMessage}</p>
+                      </div>
+                    )}
 
-              <SelectField
-                label="Transaction Type"
-                value={transactionType}
-                onChange={(e) => setTransactionType(e.target.value)}
-                options={[
-                  { value: 'extra', label: 'Extra' },
-                  { value: 'standard', label: 'Standard' },
-                ]}
-                name="transactionType"
-              />
+                    <div className="text-center mb-8">
+                      <input
+                        type="text"
+                        value={amountDisplay}
+                        onChange={handleAmountChange}
+                        className="w-40 mx-auto text-center text-xl font-bold py-3 rounded-xl focus:outline-none transition-all duration-200 bg-transparent border-none text-indigo-800"
+                        placeholder="Enter Amount"
+                        style={{ color: amount ? '#4f46e5' : '#4b5563' }}
+                      />
+                    </div>
 
-              <InputField
-                label="Purpose"
-                type="text"
-                value={purpose}
-                onChange={(e) => setPurpose(e.target.value)}
-                icon={UserIcon}
-                placeholder="Enter purpose"
-                name="purpose"
-              />
+                    <SelectField
+                      label="Transaction Type"
+                      value={transactionType}
+                      onChange={(e) => setTransactionType(e.target.value)}
+                      options={[
+                        { value: 'extra', label: 'Extra' },
+                        { value: 'standard', label: 'Standard' },
+                      ]}
+                      name="transactionType"
+                    />
 
-              <InputField
-                label="Password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                icon={Lock}
-                placeholder="Enter password"
-                name="password"
-              />
+                    <InputField
+                      label="Purpose"
+                      type="text"
+                      value={purpose}
+                      onChange={(e) => setPurpose(e.target.value)}
+                      icon={UserIcon}
+                      placeholder="Enter purpose"
+                      name="purpose"
+                    />
 
-              <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium py-3 px-4 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center"
-              >
-                <Shield size={16} className="mr-2" /> Send Securely
-              </button>
-            </form>
+                    <InputField
+                      label="Password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      icon={Lock}
+                      placeholder="Enter password"
+                      name="password"
+                    />
+
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className={`w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium py-3 px-4 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center ${
+                        isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:from-indigo-700 hover:to-purple-700'
+                      }`}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Shield size={16} className="mr-2" /> Send Securely
+                        </>
+                      )}
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

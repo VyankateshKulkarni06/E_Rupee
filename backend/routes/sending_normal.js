@@ -112,11 +112,8 @@ router.post("/check-user", userVerification, (req, res) => {
                   );
                 }
   
-                const msg =
-                  type === "extra"
-                    ? "✅ Transaction successful (extra created)."
-                    : "✅ Transaction successful.";
-                return res.status(200).json({ message: msg });
+
+                return res.status(200).json({ done:true });
               });
             });
           }

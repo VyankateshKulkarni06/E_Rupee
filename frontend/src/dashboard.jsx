@@ -70,6 +70,9 @@ function Dashboard() {
   const navigateToExtraBalance = () => {
     navigate('/ExtraBalances');
   };
+  const navigateToSearchUsers=()=>{
+    navigate(`/searchUsername`);
+  }
   
   const username = data.user_name;
   const email = data.user_email;
@@ -212,10 +215,7 @@ function Dashboard() {
 </button>
 
 <button
-  onClick={() => {
-    console.log("Send by Username clicked");
-    // navigate('/send-username');
-  }}
+  onClick={navigateToSearchUsers}
   className="bg-white rounded-xl p-3 shadow-sm border border-indigo-50 flex flex-col items-center hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-300"
 >
   <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mb-1">
