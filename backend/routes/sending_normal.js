@@ -6,27 +6,24 @@ const userVerification=require("../middleware/login_middleware");
 
 
 
+router.get("/check-user", userVerification, (req, res) => {
+  const { username } = req.body;
 
-router.get("/check-user",userVerification, (req, res) => {
-    const { username } = req.body;
-  
-    const query = `SELECT * FROM users WHERE user_name = ?`;
-  
-    db.query(query, [username], (err, results) => {
-      if (err) return res.status(500).json({ message: "DB error." });
-  
-      if (results.length === 0) {
-        return res.status(404).json({ exists: false, message: "❌ User not found" });
-      }
-  
-      const user = results[0];
-      return res.status(200).json({
-        exists: true,
-        message: "✅ User exists",
-        name: user.name, 
-      });
+  const query = `SELECT user_name, name FROM users WHERE user_name LIKE ? LIMIT 10`;
+
+  db.query(query, [`%${username}%`], (err, results) => {
+    if (err) return res.status(500).json({ message: "DB error." });
+
+    if (results.length === 0) {
+      return res.status(404).json({ users: [], message: "No users found." });
+    }
+
+    return res.status(200).json({
+      users: results, // list of matching usernames
     });
   });
+});
+
   
   router.post("/transfer", userVerification, async (req, res) => {
     const { receiver, amount, password, type = "normal", purpose = null } = req.body;

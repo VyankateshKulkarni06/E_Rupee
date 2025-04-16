@@ -1,19 +1,20 @@
 const express=require("express");
 const app=express();
+const cors=require("cors");
 const userLogin=require("./routes/user");
 const transactions=require("./routes/sending_normal");
 const get_qr=require("./routes/qr_generator");
-
+const getHistory=require("./routes/getTransactions");
+const getPendingReq=require("./routes/getPendingReq");
 
 app.use(express.json());
-
+app.use(cors());
 app.use("/user",userLogin);
 app.use("/transact",transactions);
 app.use("/get_qr",get_qr);
+app.use("/getHistory",getHistory);
+app.use("/getPending",getPendingReq);
 
-app.post("/",(req,res)=>{
-    res.json({msg:"Hello"});
-})
 app.listen(5001,()=>{
     console.log("server active on port 5000!");
 })
