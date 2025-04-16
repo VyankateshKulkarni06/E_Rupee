@@ -7,6 +7,7 @@ import PendingRequestsPage from './pending_requests';
 import SearchUsername from './Search_username';
 import TransactionHistory from "./TransactionHistory";
 import ExtraBalance from "./extra_balances";
+import ExtraPayment from "./ExtraPayment"
 
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
         <Route path="/searchUsername" element={<SearchUsername/>}/>
         <Route path ="/Transaction_History" element={<TransactionHistory/>}/>
         <Route path="/ExtraBalances" element={<ExtraBalance/>}/>
+        <Route path="/ExtraPayment" element={<ExtraPayment/>}/>
       </Routes>
     </Router>
   );

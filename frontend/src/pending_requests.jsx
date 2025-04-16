@@ -12,7 +12,7 @@ export default function PendingRequestsPage() {
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem('token');
-      console.log(token);
+      console.log('Token:', token);
       if (!token) {
         setError('No authentication token found');
         setLoading(false);
@@ -24,14 +24,22 @@ export default function PendingRequestsPage() {
         
         const response = await fetch('http://localhost:5001/getPending', {
           headers: {
-            'token':`Bearer ${token}`, // Changed from 'Bearer ${token}' to match middleware expectations
+            'token': `Bearer ${token}`,
           },
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Server response:', response.status, errorText);
-          throw new Error(`Server error: ${response.status}`);
+          const contentType = response.headers.get('content-type');
+          let errorText;
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            errorText = errorData.message || `Server error: ${response.status}`;
+          } else {
+            errorText = await response.text();
+            console.error('Non-JSON response:', errorText.slice(0, 100)); // Log first 100 chars
+            errorText = `Server error: ${response.status} (Unexpected response format)`;
+          }
+          throw new Error(errorText);
         }
 
         const result = await response.json();
@@ -88,7 +96,7 @@ export default function PendingRequestsPage() {
     }
   };
 
-  const handleApprove = async (id) => {
+  const handleRequestAction = async (pending_id, status) => {
     const token = localStorage.getItem('token');
     if (!token) {
       setError('Authentication required');
@@ -96,64 +104,43 @@ export default function PendingRequestsPage() {
     }
     
     try {
-      const response = await fetch(`http://localhost:5001/approvePending/${id}`, {
-        method: 'POST',
+      const response = await fetch('http://localhost:5001/transact/pending_request', {
+        method: 'PUT', // Changed to PUT to match backend route
         headers: {
           'Content-Type': 'application/json',
-          'token': token,
+          'token': `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          pending_id,
+          status // 'a' for approve, 'r' for reject
+        }),
       });
       
       if (!response.ok) {
-        throw new Error('Failed to approve request');
+        const contentType = response.headers.get('content-type');
+        let errorMessage;
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage = errorData.message || `Failed to process request: ${response.status}`;
+        } else {
+          const errorText = await response.text();
+          console.error('Non-JSON response:', errorText.slice(0, 100)); // Log first 100 chars
+          errorMessage = `Server error: ${response.status} (Unexpected response format)`;
+        }
+        throw new Error(errorMessage);
       }
       
-      // Refresh data after approval
+      // Update the local state to reflect the new status
       const updatedData = {
         ...data,
         userResults: data.userResults.map(req => 
-          req.pending_id === id ? {...req, status: 'c'} : req
+          req.pending_id === pending_id ? { ...req, status: status === 'a' ? 'c' : 'r' } : req
         )
       };
       setData(updatedData);
       
     } catch (err) {
-      console.error('Error approving request:', err);
-      setError(err.message);
-    }
-  };
-
-  const handleReject = async (id) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setError('Authentication required');
-      return;
-    }
-    
-    try {
-      const response = await fetch(`http://localhost:5001/rejectPending/${id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'token': token,
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to reject request');
-      }
-      
-      // Refresh data after rejection
-      const updatedData = {
-        ...data,
-        userResults: data.userResults.map(req => 
-          req.pending_id === id ? {...req, status: 'r'} : req
-        )
-      };
-      setData(updatedData);
-      
-    } catch (err) {
-      console.error('Error rejecting request:', err);
+      console.error('Error processing request:', err);
       setError(err.message);
     }
   };
@@ -257,13 +244,13 @@ export default function PendingRequestsPage() {
                     {request.status === 'a' && (
                       <div className="bg-indigo-50 px-5 py-4 flex justify-end space-x-3">
                         <button
-                          onClick={() => handleReject(request.pending_id)}
+                          onClick={() => handleRequestAction(request.pending_id, 'r')}
                           className="px-4 py-2 border border-indigo-100 rounded-xl text-sm font-medium text-gray-700 hover:bg-white transition-all duration-200"
                         >
                           Reject
                         </button>
                         <button
-                          onClick={() => handleApprove(request.pending_id)}
+                          onClick={() => handleRequestAction(request.pending_id, 'a')}
                           className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 border border-transparent rounded-xl text-sm font-medium text-white hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg"
                         >
                           Approve
