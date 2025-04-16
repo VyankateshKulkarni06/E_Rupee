@@ -15,7 +15,7 @@ import {
   Bell
 } from 'lucide-react';
 
-export default function Dashboard() {
+ function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
   
@@ -286,3 +286,4 @@ export default function Dashboard() {
     </div>
   );
 }
+export default Dashboard;
