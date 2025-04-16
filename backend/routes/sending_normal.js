@@ -27,6 +27,7 @@ router.get("/check-user",userVerification, (req, res) => {
       });
     });
   });
+  
   router.post("/transfer", userVerification, async (req, res) => {
     const { receiver, amount, password, type = "normal", purpose = null } = req.body;
     const sender = req.user.user_name;
