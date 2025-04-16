@@ -1,4 +1,5 @@
 const express=require("express");
+const mysql2=require("mysql2");
 const app=express();
 const cors=require("cors");
 const userLogin=require("./routes/user");
