@@ -6,7 +6,7 @@ const userVerification=require("../middleware/login_middleware");
 
 
 
-router.get("/check-user", userVerification, (req, res) => {
+router.post("/check-user", userVerification, (req, res) => {
   const { username } = req.body;
 
   const query = `SELECT user_name, name FROM users WHERE user_name LIKE ? LIMIT 10`;

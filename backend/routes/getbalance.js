@@ -4,12 +4,8 @@ const bcrypt = require("bcrypt");
 const userVerification = require("../middleware/login_middleware");
 
 router.post("/", userVerification, async (req, res) => {
-  const { password } = req.body;
   const user_name = req.user.user_name; // From the verified token
-
-  if (!password) {
-    return res.status(400).json({ message: "Password is required." });
-  }
+  const email=req.user.email;
 
   try {
 
@@ -40,6 +36,7 @@ router.post("/", userVerification, async (req, res) => {
   
         res.status(200).json({
           user_name,
+          email,
           balance: user.balance,
         });
       });
@@ -47,6 +44,26 @@ router.post("/", userVerification, async (req, res) => {
     console.error("Error:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
+});
+
+router.get("/Extra", userVerification, (req, res) => {
+  const user_name = req.user.user_name; // ✅ Extract from token
+
+  const extraBalQuery = `
+    SELECT sender_username, amount, purpose
+    FROM extra_bal
+    WHERE receiver_username = ?
+  `;
+
+  db.query(extraBalQuery, [user_name], (err, extraResults) => {
+    if (err) {
+      console.error("ExtraBal DB Error:", err);
+      return res.status(500).json({ message: "Error fetching extra balance." });
+    }
+    console.log("extrabal:",extraResults);
+    // ✅ Return the results from the DB
+    return res.status(200).json({ extraBalance: extraResults });
+  });
 });
 
 module.exports = router;

@@ -1,25 +1,53 @@
-import { useState } from 'react';
-import { Clock, CheckCircle, XCircle, DollarSign, User, CreditCard, ArrowRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import {
+  Clock, CheckCircle, XCircle, DollarSign, User, CreditCard, ArrowRight
+} from 'lucide-react';
 
 export default function PendingRequestsPage() {
-  // Mock data based on what you provided
-  const [data, setData] = useState({
-    userResults: [
-      {
-        pending_id: 1,
-        requester_username: "kulkarni",
-        receiver_username: "kuldhar",
-        amount: "10.00",
-        purpose: "purchase of kuldhar",
-        status: "a",
-        created_at: "2025-04-15T12:33:11.000Z",
-        original_sender: "kuldhar",
-        bal_id: 1
-      }
-    ]
-  });
+  const [data, setData] = useState({ userResults: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Function to format date
+  // Fetch pending requests
+  useEffect(() => {
+    const fetchData = async () => {
+      const token = localStorage.getItem('token');
+      console.log(token);
+      if (!token) {
+        setError('No authentication token found');
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        console.log('Fetching pending requests with token:', token);
+        
+        const response = await fetch('http://localhost:5001/getPending', {
+          headers: {
+            'token':`Bearer ${token}`, // Changed from 'Bearer ${token}' to match middleware expectations
+          },
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Server response:', response.status, errorText);
+          throw new Error(`Server error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('Received data:', result);
+        setData(result);
+      } catch (err) {
+        console.error('Fetch error:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -31,7 +59,6 @@ export default function PendingRequestsPage() {
     });
   };
 
-  // Function to get status details
   const getStatusDetails = (status) => {
     switch (status) {
       case 'a':
@@ -61,20 +88,78 @@ export default function PendingRequestsPage() {
     }
   };
 
-  // Functions to handle request actions
-  const handleApprove = (id) => {
-    console.log(`Approved request ${id}`);
-    // Here you would call your API to update the request status
+  const handleApprove = async (id) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('Authentication required');
+      return;
+    }
+    
+    try {
+      const response = await fetch(`http://localhost:5001/approvePending/${id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'token': token,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to approve request');
+      }
+      
+      // Refresh data after approval
+      const updatedData = {
+        ...data,
+        userResults: data.userResults.map(req => 
+          req.pending_id === id ? {...req, status: 'c'} : req
+        )
+      };
+      setData(updatedData);
+      
+    } catch (err) {
+      console.error('Error approving request:', err);
+      setError(err.message);
+    }
   };
 
-  const handleReject = (id) => {
-    console.log(`Rejected request ${id}`);
-    // Here you would call your API to update the request status
+  const handleReject = async (id) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('Authentication required');
+      return;
+    }
+    
+    try {
+      const response = await fetch(`http://localhost:5001/rejectPending/${id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'token': token,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to reject request');
+      }
+      
+      // Refresh data after rejection
+      const updatedData = {
+        ...data,
+        userResults: data.userResults.map(req => 
+          req.pending_id === id ? {...req, status: 'r'} : req
+        )
+      };
+      setData(updatedData);
+      
+    } catch (err) {
+      console.error('Error rejecting request:', err);
+      setError(err.message);
+    }
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50">
-      {/* Header with app branding */}
       <header className="py-6 px-4 flex justify-center">
         <div className="flex items-center space-x-2">
           <CreditCard size={28} className="text-purple-600" />
@@ -90,8 +175,24 @@ export default function PendingRequestsPage() {
             <Clock size={24} className="text-indigo-500 mr-2" />
             Pending Requests
           </h1>
-          
-          {data.userResults.length === 0 ? (
+
+          {loading ? (
+            <div className="bg-white rounded-2xl shadow-xl p-6 text-center border border-indigo-50">
+              <div className="flex justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="bg-red-100 rounded-2xl shadow-xl p-6 text-center border border-red-200">
+              <p className="text-red-600">{error}</p>
+              <button 
+                onClick={() => window.location.reload()}
+                className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : data.userResults.length === 0 ? (
             <div className="bg-white rounded-2xl shadow-xl p-6 text-center border border-indigo-50">
               <p className="text-gray-500">No pending requests found.</p>
             </div>
@@ -99,7 +200,7 @@ export default function PendingRequestsPage() {
             <div className="space-y-4">
               {data.userResults.map((request) => {
                 const statusDetails = getStatusDetails(request.status);
-                
+
                 return (
                   <div key={request.pending_id} className="bg-white rounded-2xl shadow-xl overflow-hidden border border-indigo-50">
                     <div className="p-5">
@@ -117,7 +218,7 @@ export default function PendingRequestsPage() {
                           {formatDate(request.created_at)}
                         </span>
                       </div>
-                      
+
                       <div className="space-y-4">
                         <div className="flex items-center">
                           <User className="text-indigo-400 mr-2" size={18} />
@@ -133,7 +234,7 @@ export default function PendingRequestsPage() {
                             <div className="font-medium text-gray-700">{request.receiver_username}</div>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center">
                           <DollarSign className="text-indigo-400 mr-2" size={18} />
                           <div>
@@ -141,27 +242,27 @@ export default function PendingRequestsPage() {
                             <div className="font-medium text-indigo-600">₹{request.amount}</div>
                           </div>
                         </div>
-                        
+
                         <div>
                           <div className="text-sm text-gray-500">Purpose</div>
-                          <div className="text-gray-700">{request.purpose}</div>
+                          <div className="text-gray-700">{request.purpose || 'Not specified'}</div>
                         </div>
-                        
+
                         <div className="text-sm text-gray-500">
                           Original sender: <span className="font-medium text-gray-700">{request.original_sender}</span>
                         </div>
                       </div>
                     </div>
-                    
+
                     {request.status === 'a' && (
                       <div className="bg-indigo-50 px-5 py-4 flex justify-end space-x-3">
-                        <button 
+                        <button
                           onClick={() => handleReject(request.pending_id)}
                           className="px-4 py-2 border border-indigo-100 rounded-xl text-sm font-medium text-gray-700 hover:bg-white transition-all duration-200"
                         >
                           Reject
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleApprove(request.pending_id)}
                           className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 border border-transparent rounded-xl text-sm font-medium text-white hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg"
                         >
@@ -174,8 +275,7 @@ export default function PendingRequestsPage() {
               })}
             </div>
           )}
-          
-          {/* Security Badge */}
+
           <div className="mt-6 bg-white bg-opacity-80 backdrop-blur-sm rounded-xl shadow-md p-4 border border-indigo-50">
             <div className="flex items-center justify-center">
               <Clock size={16} className="text-indigo-500 mr-2" />

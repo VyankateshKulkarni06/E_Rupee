@@ -14,40 +14,68 @@ import {
   LogOut,
   Bell
 } from 'lucide-react';
+import axios from "axios";
+import { useNavigate } from 'react-router-dom'; // Import for navigation
 
 function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('home');
-  const [data, setData] = useState({ user_name: "Loading",name_full:"Loading", balance: {} });
+  const [data, setData] = useState({ 
+    user_name: "Loading", 
+    user_email: "Loading",
+    balance: "Loading" 
+  });
+  const navigate = useNavigate(); // Hook for navigation
 
-  
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
   useEffect(() => {
     const fetchBalance = async () => {
-      console.log("before getting token");
       const token = localStorage.getItem("token");
-      console.log("token:", token);
-
+      
       try {
-        console.log("before fetching");
-        const response = await axios.get("http://localhost:5001/getBalance", {
+        const response = await axios.post("http://localhost:5001/getBalance", {}, {
           headers: {
             token: `Bearer ${token}`,
           },
         });
-        console.log("after fetching");
-        setData(response.data);
-        console.log(response.data);
+        
+        // Ensure the balance is properly formatted as a string
+        const userData = response.data;
+        if (userData && typeof userData.balance === 'object') {
+          // If balance is an object, convert it to a string representation
+          userData.balance = JSON.stringify(userData.balance);
+        }
+        
+        setData(userData);
       } catch (error) {
         console.error("Error fetching data:", error);
+        // Set error state if needed
       }
     };
-
+  
     fetchBalance();
   }, []);
+  
+  // Navigation handlers
+  const navigateToPendingRequests = () => {
+    navigate('/PendingRequests');
+  };
+
+  const navigateToTransactionHistory = () => {
+    navigate('/Transaction_History');
+  };
+  
+  const navigateToExtraBalance = () => {
+    navigate('/ExtraBalances');
+  };
+  
+  const username = data.user_name;
+  const email = data.user_email;
+  const balances = data.balance;
+  localStorage.setItem("username",username);
+  localStorage.setItem("email",email);
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50">
@@ -87,8 +115,8 @@ function Dashboard() {
               <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-2">
                 <User size={28} className="text-indigo-600" />
               </div>
-              <h3 className="text-base font-medium">{user_name}</h3>
-              <p className="text-xs text-indigo-100">{name_full}</p>
+              <h3 className="text-base font-medium">{username}</h3>
+              <p className="text-xs text-indigo-100">{email}</p>
             </div>
           </div>
           
@@ -99,7 +127,6 @@ function Dashboard() {
                 <div className="w-24 h-24 bg-white p-1 border border-indigo-100 rounded-lg mb-1">
                   <QrCode size={88} className="text-indigo-800" />
                 </div>
-                <p className="text-xs text-gray-500">ID: VT123456789</p>
               </div>
             </div>
           </div>
@@ -119,7 +146,7 @@ function Dashboard() {
                 </a>
               </li>
               <li>
-                <a href="#" className="flex items-center p-2 text-gray-700 hover:bg-indigo-50 rounded-lg transition-colors">
+                <a href="#" onClick={navigateToTransactionHistory} className="flex items-center p-2 text-gray-700 hover:bg-indigo-50 rounded-lg transition-colors">
                   <Clock size={16} className="mr-2" />
                   <span className="text-sm">Transactions</span>
                 </a>
@@ -154,7 +181,7 @@ function Dashboard() {
       <main className="flex-1 p-3">
         {/* Welcome Section */}
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800">Welcome, <span className="text-indigo-600">VyanTech</span></h1>
+          <h1 className="text-xl font-bold text-gray-800">Welcome, <span className="text-indigo-600">{username}</span></h1>
           <p className="text-sm text-gray-600">Manage your payments and transactions</p>
         </div>
         
@@ -163,50 +190,74 @@ function Dashboard() {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-xs text-indigo-100">Available Balance</p>
-              <h2 className="text-2xl font-bold">₹24,500.00</h2>
+              <h2 className="text-2xl font-bold">{balances}</h2>
             </div>
           </div>
         </div>
         
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-white rounded-xl p-3 shadow-sm border border-indigo-50 flex flex-col items-center hover:shadow-md transition-shadow">
-            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mb-1">
-              <Send size={16} className="text-indigo-600" />
-            </div>
-            <h3 className="text-sm font-medium text-gray-800">Send QR</h3>
-            <p className="text-xs text-gray-500 text-center">Quick transfers</p>
-          </div>
+        <button
+  onClick={() => {
+    console.log("Scan QR clicked");
+    // navigate('/scan-qr');
+  }}
+  className="bg-white rounded-xl p-3 shadow-sm border border-indigo-50 flex flex-col items-center hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-300"
+>
+  <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mb-1">
+    <Send size={16} className="text-indigo-600" />
+  </div>
+  <h3 className="text-sm font-medium text-gray-800">Scan QR</h3>
+  <p className="text-xs text-gray-500 text-center">Quick transfers</p>
+</button>
+
+<button
+  onClick={() => {
+    console.log("Send by Username clicked");
+    // navigate('/send-username');
+  }}
+  className="bg-white rounded-xl p-3 shadow-sm border border-indigo-50 flex flex-col items-center hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-300"
+>
+  <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mb-1">
+    <Send size={16} className="text-indigo-600" />
+  </div>
+  <h3 className="text-sm font-medium text-gray-800">Send by Username</h3>
+  <p className="text-xs text-gray-500 text-center">Direct</p>
+</button>
+
+<button
+onClick={navigateToExtraBalance}
+  
+  className="bg-white rounded-xl p-3 shadow-sm border border-indigo-50 flex flex-col items-center hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-300"
+>
+  <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mb-1">
+    <Wallet size={16} className="text-indigo-600" />
+  </div>
+  <h3 className="text-sm font-medium text-gray-800">Check Extra Bal</h3>
+  <p className="text-xs text-gray-500 text-center">Account balance</p>
+</button>
+
           
-          <div className="bg-white rounded-xl p-3 shadow-sm border border-indigo-50 flex flex-col items-center hover:shadow-md transition-shadow">
-            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mb-1">
-              <Send size={16} className="text-indigo-600" />
-            </div>
-            <h3 className="text-sm font-medium text-gray-800">Send UPI</h3>
-            <p className="text-xs text-gray-500 text-center">UPI/Mobile</p>
-          </div>
-          
-          <div className="bg-white rounded-xl p-3 shadow-sm border border-indigo-50 flex flex-col items-center hover:shadow-md transition-shadow">
-            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mb-1">
-              <Wallet size={16} className="text-indigo-600" />
-            </div>
-            <h3 className="text-sm font-medium text-gray-800">Check Bal</h3>
-            <p className="text-xs text-gray-500 text-center">Account balance</p>
-          </div>
-          
-          <div className="bg-white rounded-xl p-3 shadow-sm border border-indigo-50 flex flex-col items-center hover:shadow-md transition-shadow">
-            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mb-1">
-              <Gift size={16} className="text-indigo-600" />
-            </div>
-            <h3 className="text-sm font-medium text-gray-800">Rewards</h3>
-            <p className="text-xs text-gray-500 text-center">View bonuses</p>
-          </div>
+          <button
+  onClick={() => {
+    console.log("Check Extra Balance clicked");
+    // navigate('/extra-balances');
+  }}
+  className="bg-white rounded-xl p-3 shadow-sm border border-indigo-50 flex flex-col items-center hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-300"
+>
+  <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mb-1">
+    <Gift size={16} className="text-indigo-600" />
+  </div>
+  <h3 className="text-sm font-medium text-gray-800">Extra Payment</h3>
+  <p className="text-xs text-gray-500 text-center">View Balances</p>
+</button>
+
         </div>
         
-        {/* Pending Requests Button */}
+        {/* Pending Requests Button - Modified to navigate to PendingRequests page */}
         <button 
           className="bg-white rounded-xl p-3 shadow-sm border border-indigo-50 mb-3 w-full hover:shadow-md transition-shadow"
-          onClick={() => setActiveTab('pendingRequests')}
+          onClick={navigateToPendingRequests}
         >
           <div className="flex justify-between items-center">
             <div className="flex items-center">
@@ -219,10 +270,10 @@ function Dashboard() {
           </div>
         </button>
         
-        {/* Transaction History Button */}
+        {/* Transaction History Button - Modified to navigate to Transaction_History page */}
         <button 
           className="bg-white rounded-xl p-3 shadow-sm border border-indigo-50 w-full hover:shadow-md transition-shadow"
-          onClick={() => setActiveTab('transactions')}
+          onClick={navigateToTransactionHistory}
         >
           <div className="flex justify-between items-center">
             <h3 className="font-medium text-gray-800 text-sm">Transaction History</h3>
@@ -232,103 +283,6 @@ function Dashboard() {
           </div>
         </button>
       </main>
-
-      {/* This would be separate page content that would appear when clicking the buttons */}
-      {activeTab === 'pendingRequests' && (
-        <div className="fixed inset-0 bg-white z-50 p-4 overflow-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-gray-800">Pending Requests</h2>
-            <button onClick={() => setActiveTab('home')} className="text-indigo-600">
-              <X size={20} />
-            </button>
-          </div>
-          
-          <div className="space-y-3">
-            <div className="flex justify-between items-center p-3 bg-white rounded-lg shadow-sm border border-indigo-50">
-              <div>
-                <p className="font-medium text-sm text-gray-800">Rahul Sharma</p>
-                <p className="text-xs text-gray-500">Requested ₹2,000</p>
-              </div>
-              <div className="flex space-x-2">
-                <button className="bg-indigo-600 text-white px-3 py-1 rounded text-xs">Pay</button>
-                <button className="bg-white text-gray-600 border border-gray-300 px-3 py-1 rounded text-xs">Decline</button>
-              </div>
-            </div>
-            
-            <div className="flex justify-between items-center p-3 bg-white rounded-lg shadow-sm border border-indigo-50">
-              <div>
-                <p className="font-medium text-sm text-gray-800">Priya Patel</p>
-                <p className="text-xs text-gray-500">Requested ₹500</p>
-              </div>
-              <div className="flex space-x-2">
-                <button className="bg-indigo-600 text-white px-3 py-1 rounded text-xs">Pay</button>
-                <button className="bg-white text-gray-600 border border-gray-300 px-3 py-1 rounded text-xs">Decline</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {activeTab === 'transactions' && (
-        <div className="fixed inset-0 bg-white z-50 p-4 overflow-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-gray-800">Transaction History</h2>
-            <button onClick={() => setActiveTab('home')} className="text-indigo-600">
-              <X size={20} />
-            </button>
-          </div>
-          
-          <div className="space-y-4">
-            <div className="flex justify-between items-center p-3 bg-white rounded-lg shadow-sm border border-indigo-50">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                  <Send size={16} className="text-green-600 transform rotate-180" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm text-gray-800">Money Received</p>
-                  <p className="text-xs text-gray-500">From: Amit Kumar</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="font-medium text-sm text-green-600">+₹1,500</p>
-                <p className="text-xs text-gray-500">Today, 10:30 AM</p>
-              </div>
-            </div>
-            
-            <div className="flex justify-between items-center p-3 bg-white rounded-lg shadow-sm border border-indigo-50">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
-                  <Send size={16} className="text-red-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm text-gray-800">Money Sent</p>
-                  <p className="text-xs text-gray-500">To: Neha Singh</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="font-medium text-sm text-red-600">-₹2,000</p>
-                <p className="text-xs text-gray-500">Yesterday, 2:15 PM</p>
-              </div>
-            </div>
-            
-            <div className="flex justify-between items-center p-3 bg-white rounded-lg shadow-sm border border-indigo-50">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                  <CreditCard size={16} className="text-blue-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm text-gray-800">Added to Wallet</p>
-                  <p className="text-xs text-gray-500">Via UPI</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="font-medium text-sm text-green-600">+₹5,000</p>
-                <p className="text-xs text-gray-500">Apr 14, 4:30 PM</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,82 +1,99 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { ArrowLeft, Send, Download, Filter, Search, Calendar, CreditCard } from 'lucide-react';
 
 function TransactionHistory() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   
-  // Mock data for demonstration, in real app this would be fetched
-  const mockData = {
-    "userResults": [
-      {
-        "payment_id": 1001,
-        "sender_username": "kuldhar",
-        "receiver_username": "kulkarni",
-        "done_at": "2025-04-15T12:29:59.000Z",
-        "amount": "50.00",
-        "status_first": "a",
-        "status": "done",
-        "type": "extra",
-        "bal_id": 1
-      },
-      {
-        "payment_id": 1002,
-        "sender_username": "kulkarni",
-        "receiver_username": "kuldhar",
-        "done_at": "2025-04-15T12:37:06.000Z",
-        "amount": "10.00",
-        "status_first": "a",
-        "status": "done",
-        "type": "normal",
-        "bal_id": 1
-      }
-    ]
-  };
+  // Retrieve username from localStorage
+  const currentUser = localStorage.getItem("username");
   
-  // Simulate API fetch
   useEffect(() => {
-    // In a real app, replace with actual API call:
-    // fetch('/api/transactions')
-    //   .then(res => res.json())
-    //   .then(data => {
-    //     setTransactions(data.userResults);
-    //     setLoading(false);
-    //   })
-    //   .catch(err => {
-    //     console.error('Error fetching transactions:', err);
-    //     setLoading(false);
-    //   });
+    const token = localStorage.getItem("token");
     
-    // For demonstration, use mock data with a small delay
-    setTimeout(() => {
-      setTransactions(mockData.userResults);
+    if (!token) {
+      console.error("No token found");
+      setError("Authentication error: No token found");
       setLoading(false);
-    }, 500);
-  }, []);
+      return;
+    }
+
+    if (!currentUser) {
+      console.error("No username found");
+      setError("Authentication error: No username found");
+      setLoading(false);
+      return;
+    }
+
+    console.log("Fetching transactions for user:", currentUser);
+    
+    // Configure axios with the token in the header
+    axios.get("http://localhost:5001/getHistory", {
+      headers: {
+        "Content-Type": "application/json",
+        "token": `Bearer ${token}` // Try with Bearer token format
+      },
+    })
+    .then(res => {
+      console.log("Transaction data received:", res.data);
+      if (res.data && res.data.userResults) {
+        setTransactions(res.data.userResults);
+      } else {
+        console.error("Unexpected data format:", res.data);
+        setError("Received unexpected data format from server");
+      }
+      setLoading(false);
+    })
+    .catch(err => {
+      console.error("Error fetching transactions:", err);
+      
+      // More detailed error handling
+      if (err.response) {
+        // The server responded with a status code outside of 2xx range
+        console.error("Server response:", err.response.data);
+        setError(`Server error: ${err.response.status} - ${err.response.data.message || "Unknown error"}`);
+      } else if (err.request) {
+        // The request was made but no response was received
+        setError("No response received from server. Please check your connection.");
+      } else {
+        // Something happened in setting up the request
+        setError(`Error: ${err.message}`);
+      }
+      
+      setLoading(false);
+    });
+  }, [currentUser]);
   
   // Format date to readable format
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
+    try {
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date);
+    } catch (e) {
+      console.error("Date formatting error:", e);
+      return "Invalid date";
+    }
   };
   
-  // Used to check if the user is the sender
-  const currentUser = "kulkarni"; // In a real app, this would come from auth context
+  // Determine if transaction is incoming or outgoing for current user
+  const isIncoming = (transaction) => transaction.receiver_username === currentUser;
   
   // Filter transactions based on search query and type filter
   const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = 
-      transaction.sender_username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      transaction.receiver_username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      transaction.payment_id.toString().includes(searchQuery);
+      (transaction.sender_username && transaction.sender_username.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (transaction.receiver_username && transaction.receiver_username.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (transaction.payment_id && transaction.payment_id.toString().includes(searchQuery));
       
     const matchesType = 
       filterType === 'all' || 
@@ -86,9 +103,6 @@ function TransactionHistory() {
       
     return matchesSearch && matchesType;
   });
-  
-  // Determine if transaction is incoming or outgoing for current user
-  const isIncoming = (transaction) => transaction.receiver_username === currentUser;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50">
@@ -162,6 +176,16 @@ function TransactionHistory() {
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
           </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <p className="text-red-500">{error}</p>
+            <button 
+              className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              onClick={() => window.location.reload()}
+            >
+              Try Again
+            </button>
+          </div>
         ) : filteredTransactions.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-500">No transactions found</p>
@@ -189,9 +213,11 @@ function TransactionHistory() {
                           <span className="text-sm font-medium text-gray-800">
                             {isIncomingTx ? 'Received from' : 'Sent to'}
                           </span>
-                          <span className="ml-1 px-2 py-0.5 bg-indigo-100 text-indigo-600 text-xs rounded-full">
-                            {transaction.type}
-                          </span>
+                          {transaction.type && (
+                            <span className="ml-1 px-2 py-0.5 bg-indigo-100 text-indigo-600 text-xs rounded-full">
+                              {transaction.type}
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm text-gray-700 font-medium">
                           {isIncomingTx ? transaction.sender_username : transaction.receiver_username}
@@ -206,12 +232,12 @@ function TransactionHistory() {
                       </div>
                     </div>
                     <div className={`text-right font-medium ${isIncomingTx ? 'text-green-600' : 'text-red-600'}`}>
-                      {isIncomingTx ? '+' : '-'}₹{parseFloat(transaction.amount).toFixed(2)}
+                      {isIncomingTx ? '+' : '-'}₹{parseFloat(transaction.amount || 0).toFixed(2)}
                     </div>
                   </div>
                   <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
                     <span className={`text-xs px-2 py-1 rounded-full ${transaction.status === 'done' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {transaction.status}
+                      {transaction.status || 'pending'}
                     </span>
                     <button className="text-xs text-indigo-600 hover:text-indigo-800">
                       View Details

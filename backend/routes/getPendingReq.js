@@ -5,6 +5,7 @@ const db=require(".././../db/connection");
 router.get("/",userVerification, async (req, res) => {
   const user_name=req.user.user_name;
   console.log(user_name);
+  console.log("in getpendingreq");
   const userQuery = `SELECT * FROM pending_req WHERE original_sender= ?`;
   db.query(userQuery, [user_name], async (err, userResults) => {
     if (err) {
@@ -13,7 +14,7 @@ router.get("/",userVerification, async (req, res) => {
     }
 
     if (userResults.length === 0) {
-      return res.status(404).json({ message: "User not found." });
+      return res.json({userResults:[]});
     }
 
     
