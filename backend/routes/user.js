@@ -48,8 +48,11 @@ router.post("/register-step2", async (req, res) => {
   db.query(insertQuery, [name, user_name, email, hashedPassword], (err) => {
     if (err) return res.status(500).json({ message: "Error creating user." });
 
-    res.status(201).json({ message: "✅ User registered successfully." });
+    const token = jwt.sign({ user_name, email }, secret, { expiresIn: "2h" });
+    res.status(200).json({ message: "✅ Registration successful!", token });
+    
   });
+  
 });
 
 // Login Step 1: User submits username and email

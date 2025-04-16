@@ -1,8 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Mail, Lock, Info, CreditCard, Shield } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate hook
 
 function AuthUI() {
+  // Add navigation
+  const navigate = useNavigate();
+  
+  // State for managing the active tab (login or register)
   const [activeTab, setActiveTab] = useState('login');
+  
+  // State for form data
   const [formData, setFormData] = useState({
     username: '',
     fullName: '',
@@ -11,13 +18,21 @@ function AuthUI() {
     confirmPassword: '',
     otp: '',
   });
+  
+  // State to toggle OTP input visibility
   const [showOTP, setShowOTP] = useState(false);
+  
+  // State for feedback messages (success or error)
+  const [feedback, setFeedback] = useState({ type: '', message: '' });
 
+  // Handle tab switching between login and register
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    setShowOTP(false); // Reset OTP visibility when switching tabs
+    setShowOTP(false); // Hide OTP field when switching tabs
+    setFeedback({ type: '', message: '' }); // Clear feedback
   };
 
+  // Update form data on input change
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({
@@ -26,21 +41,134 @@ function AuthUI() {
     });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Form submitted:', formData);
-    // Add authentication logic here
+  // Send OTP request to the server
+  const handleSendOTP = async () => {
+    try {
+      let url, body;
+      if (activeTab === 'login') {
+        url = 'http://localhost:5001/user/login-step1';
+        body = {
+          user_name: formData.username,
+          email: formData.email,
+        };
+      } else {
+        url = 'http://localhost:5001/user/register-step1';
+        body = {
+          name: formData.fullName,
+          user_name: formData.username,
+          email: formData.email,
+        };
+      }
+
+      // Show OTP field immediately
+      setShowOTP(true);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.message) {
+        setFeedback({ type: 'success', message: data.message || 'OTP sent successfully' });
+      } else {
+        setFeedback({ type: 'error', message: data.message || 'Failed to send OTP' });
+      }
+    } catch (error) {
+      setFeedback({ type: 'error', message: 'Error sending OTP. Please try again.' });
+    }
   };
 
-  const handleSendOTP = () => {
-    console.log('Sending OTP to:', formData.email);
-    setShowOTP(true); // Show OTP input field
-    // Add OTP logic here
+  // Handle form submission for login or registration
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      let url, body;
+      if (activeTab === 'login') {
+        url = 'http://localhost:5001/user/login-step2';
+        body = {
+          user_name: formData.username,
+          email: formData.email,
+          otp: formData.otp,
+          password: formData.password,
+        };
+      } else {
+        url = 'http://localhost:5001/user/register-step2';
+        body = {
+          name: formData.fullName,
+          user_name: formData.username,
+          email: formData.email,
+          otp: formData.otp,
+          password: formData.password,
+        };
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.token) {
+        // Store token in localStorage
+        localStorage.setItem('token', data.token);
+        setFeedback({
+          type: 'success',
+          message: data.message || `${activeTab === 'login' ? 'Login' : 'Registration'} successful`,
+        });
+
+        // Reset form after successful registration
+        if (activeTab === 'register') {
+          setFormData({
+            username: '',
+            fullName: '',
+            email: '',
+            password: '',
+            confirmPassword: '',
+            otp: '',
+          });
+          setShowOTP(false);
+        }
+        
+        // Navigate to dashboard after a short delay to show success message
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1500);
+      } else {
+        setFeedback({
+          type: 'error',
+          message: data.message || `${activeTab === 'login' ? 'Login' : 'Registration'} failed`,
+        });
+      }
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: `Error during ${activeTab === 'login' ? 'login' : 'registration'}. Please try again.`,
+      });
+    }
   };
+
+  // Clear feedback message after 5 seconds
+  useEffect(() => {
+    if (feedback.message) {
+      const timer = setTimeout(() => {
+        setFeedback({ type: '', message: '' });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [feedback]);
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50">
-      {/* Header with app branding */}
+      {/* Header */}
       <header className="py-6 px-4 flex justify-center">
         <div className="flex items-center space-x-2">
           <CreditCard size={28} className="text-purple-600" />
@@ -50,6 +178,7 @@ function AuthUI() {
         </div>
       </header>
 
+      {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-indigo-50">
           {/* Tab Navigation */}
@@ -76,12 +205,26 @@ function AuthUI() {
             </button>
           </div>
 
-          {/* Form Content */}
+          {/* Form Container */}
           <div className="p-6">
+            {/* Feedback Message */}
+            {feedback.message && (
+              <div
+                className={`mb-4 p-3 rounded-xl text-sm font-medium ${
+                  feedback.type === 'success'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-red-100 text-red-700'
+                }`}
+              >
+                {feedback.message}
+              </div>
+            )}
+
+            {/* Form */}
             <form onSubmit={handleSubmit}>
-              {/* Login Form */}
               {activeTab === 'login' && (
                 <>
+                  {/* Username */}
                   <div className="mb-4">
                     <label className="block text-gray-700 text-sm font-medium mb-2">
                       Username
@@ -101,6 +244,7 @@ function AuthUI() {
                     </div>
                   </div>
 
+                  {/* Email with Send OTP */}
                   <div className="mb-4">
                     <label className="block text-gray-700 text-sm font-medium mb-2">
                       Email
@@ -127,6 +271,7 @@ function AuthUI() {
                     </div>
                   </div>
 
+                  {/* OTP Input */}
                   {showOTP && (
                     <div className="mb-4">
                       <label className="block text-gray-700 text-sm font-medium mb-2">
@@ -143,14 +288,16 @@ function AuthUI() {
                           onChange={handleInputChange}
                           className="w-full pl-10 pr-3 py-3 border border-indigo-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all duration-200"
                           placeholder="Enter OTP"
+                          autoFocus
                         />
                       </div>
                     </div>
                   )}
 
+                  {/* Password */}
                   <div className="mb-6">
                     <label className="block text-gray-700 text-sm font-medium mb-2">
-                      PasswordAs
+                      Password
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -167,6 +314,7 @@ function AuthUI() {
                     </div>
                   </div>
 
+                  {/* Submit Button */}
                   <button
                     type="submit"
                     className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium py-3 px-4 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg"
@@ -174,6 +322,7 @@ function AuthUI() {
                     Login
                   </button>
 
+                  {/* Forgot Password Link */}
                   <div className="mt-4 text-center">
                     <a
                       href="#"
@@ -185,9 +334,29 @@ function AuthUI() {
                 </>
               )}
 
-              {/* Register Form */}
               {activeTab === 'register' && (
                 <>
+                  {/* Full Name */}
+                  <div className="mb-4">
+                    <label className="block text-gray-700 text-sm font-medium mb-2">
+                      Full Name
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <User size={18} className="text-indigo-400" />
+                      </div>
+                      <input
+                        type="text"
+                        name="fullName"
+                        value={formData.fullName}
+                        onChange={handleInputChange}
+                        className="w-full pl-10 pr-3 py-3 border border-indigo-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all duration-200"
+                        placeholder="Enter full name"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Username */}
                   <div className="mb-4">
                     <label className="block text-gray-700 text-sm font-medium mb-2">
                       Username
@@ -207,25 +376,7 @@ function AuthUI() {
                     </div>
                   </div>
 
-                  <div className="mb-4">
-                    <label className="block text-gray-700 text-sm font-medium mb-2">
-                      Full Name
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <User size={18} className="text-indigo-400" />
-                      </div>
-                      <input
-                        type="text"
-                        name="fullName"
-                        value={formData.fullName}
-                        onChange={handleInputChange}
-                        className="w-full pl-10 pr-3 py-3 border border-indigo-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all duration-200"
-                        placeholder="Enter your full name"
-                      />
-                    </div>
-                  </div>
-
+                  {/* Email with Send OTP */}
                   <div className="mb-4">
                     <label className="block text-gray-700 text-sm font-medium mb-2">
                       Email
@@ -240,7 +391,7 @@ function AuthUI() {
                         value={formData.email}
                         onChange={handleInputChange}
                         className="w-full pl-10 pr-3 py-3 border border-indigo-100 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all duration-200"
-                        placeholder="Enter your email"
+                        placeholder="Enter email"
                       />
                       <button
                         type="button"
@@ -252,6 +403,7 @@ function AuthUI() {
                     </div>
                   </div>
 
+                  {/* OTP Input */}
                   {showOTP && (
                     <div className="mb-4">
                       <label className="block text-gray-700 text-sm font-medium mb-2">
@@ -268,11 +420,13 @@ function AuthUI() {
                           onChange={handleInputChange}
                           className="w-full pl-10 pr-3 py-3 border border-indigo-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all duration-200"
                           placeholder="Enter OTP"
+                          autoFocus
                         />
                       </div>
                     </div>
                   )}
 
+                  {/* Password */}
                   <div className="mb-4">
                     <label className="block text-gray-700 text-sm font-medium mb-2">
                       Password
@@ -287,11 +441,12 @@ function AuthUI() {
                         value={formData.password}
                         onChange={handleInputChange}
                         className="w-full pl-10 pr-3 py-3 border border-indigo-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all duration-200"
-                        placeholder="Create a password"
+                        placeholder="Create password"
                       />
                     </div>
                   </div>
 
+                  {/* Confirm Password */}
                   <div className="mb-6">
                     <label className="block text-gray-700 text-sm font-medium mb-2">
                       Confirm Password
@@ -306,11 +461,12 @@ function AuthUI() {
                         value={formData.confirmPassword}
                         onChange={handleInputChange}
                         className="w-full pl-10 pr-3 py-3 border border-indigo-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all duration-200"
-                        placeholder="Confirm your password"
+                        placeholder="Confirm password"
                       />
                     </div>
                   </div>
 
+                  {/* Submit Button */}
                   <button
                     type="submit"
                     className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium py-3 px-4 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg"
@@ -333,7 +489,7 @@ function AuthUI() {
           </div>
         </div>
 
-        {/* About Us Section */}
+        {/* About Us (Register Tab Only) */}
         {activeTab === 'register' && (
           <div className="w-full max-w-md mt-4 bg-white rounded-xl shadow-md p-4 border border-indigo-50">
             <div className="flex items-center justify-between">

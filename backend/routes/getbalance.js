@@ -3,7 +3,7 @@ const db = require("../../db/connection");
 const bcrypt = require("bcrypt");
 const userVerification = require("../middleware/login_middleware");
 
-router.post("/getbalance", userVerification, async (req, res) => {
+router.post("/", userVerification, async (req, res) => {
   const { password } = req.body;
   const user_name = req.user.user_name; // From the verified token
 
@@ -13,7 +13,7 @@ router.post("/getbalance", userVerification, async (req, res) => {
 
   try {
 
-    const userQuery = `SELECT password, balance FROM users WHERE user_name = ?`;
+    const userQuery = `SELECT balance FROM users WHERE user_name = ?`;
     db.query(userQuery, [user_name], async (err, userResults) => {
       if (err) {
         console.error("DB Error:", err);
@@ -25,31 +25,24 @@ router.post("/getbalance", userVerification, async (req, res) => {
       }
 
       const user = userResults[0];
-
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        return res.status(401).json({ message: "Incorrect password." });
-      }
-
      
-      const extraBalQuery = `
-        SELECT sender_username, amount, purpose
-        FROM extra_bal
-        WHERE receiver_username = ?
-      `;
-      db.query(extraBalQuery, [user_name], (err, extraResults) => {
-        if (err) {
-          console.error("ExtraBal DB Error:", err);
-          return res.status(500).json({ message: "Error fetching extra balance." });
-        }
+      // const extraBalQuery = `
+      //   SELECT sender_username, amount, purpose
+      //   FROM extra_bal
+      //   WHERE receiver_username = ?
+      // `;
+      // db.query(extraBalQuery, [user_name], (err, extraResults) => {
+      //   if (err) {
+      //     console.error("ExtraBal DB Error:", err);
+      //     return res.status(500).json({ message: "Error fetching extra balance." });
+      //   }
 
   
         res.status(200).json({
+          user_name,
           balance: user.balance,
-          receivedExtra: extraResults
         });
       });
-    });
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({ message: "Internal Server Error" });

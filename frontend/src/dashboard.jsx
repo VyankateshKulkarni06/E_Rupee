@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Menu, 
   X, 
@@ -18,10 +18,36 @@ import {
 function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
+  const [data, setData] = useState({ user_name: "Loading",name_full:"Loading", balance: {} });
+
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      console.log("before getting token");
+      const token = localStorage.getItem("token");
+      console.log("token:", token);
+
+      try {
+        console.log("before fetching");
+        const response = await axios.get("http://localhost:5001/getBalance", {
+          headers: {
+            token: `Bearer ${token}`,
+          },
+        });
+        console.log("after fetching");
+        setData(response.data);
+        console.log(response.data);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchBalance();
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50">
@@ -61,8 +87,8 @@ function Dashboard() {
               <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-2">
                 <User size={28} className="text-indigo-600" />
               </div>
-              <h3 className="text-base font-medium">VyanTech</h3>
-              <p className="text-xs text-indigo-100">user@vyantech.com</p>
+              <h3 className="text-base font-medium">{user_name}</h3>
+              <p className="text-xs text-indigo-100">{name_full}</p>
             </div>
           </div>
           
