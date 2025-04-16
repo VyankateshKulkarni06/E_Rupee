@@ -76,24 +76,25 @@ const pending_req = `
 connection.query(Users, (err, results) => {
   if (err) throw err;
   console.log("✅ Users table ready.");
-});
-connection.query(pending_req, (err, results) => {
-  if (err) throw err;
-  console.log("✅ Pending table ready.");
-});
-connection.query(ExtraBal, (err, results) => {
-  if (err) throw err;
-  console.log("✅ ExtraBal table ready.");
-});
 
-connection.query(Payment, (err, results) => {
-  if (err) throw err;
-  console.log("✅ Payment table created.");
-
-  // Set starting AUTO_INCREMENT value
-  connection.query("ALTER TABLE payment AUTO_INCREMENT = 1001;", (err) => {
+  connection.query(ExtraBal, (err, results) => {
     if (err) throw err;
-    console.log("🔢 AUTO_INCREMENT set to start from 1001.");
+    console.log("✅ ExtraBal table ready.");
+
+    connection.query(Payment, (err, results) => {
+      if (err) throw err;
+      console.log("✅ Payment table created.");
+
+      connection.query("ALTER TABLE payment AUTO_INCREMENT = 1001;", (err) => {
+        if (err) throw err;
+        console.log("🔢 AUTO_INCREMENT set to start from 1001.");
+      });
+
+      connection.query(pending_req, (err, results) => {
+        if (err) throw err;
+        console.log("✅ Pending table ready.");
+      });
+    });
   });
 });
 

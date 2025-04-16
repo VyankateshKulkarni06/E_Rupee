@@ -18,5 +18,5 @@ app.use("/getPending",getPendingReq);
 app.use("/getBalance",getBalance);
 
 app.listen(5001,()=>{
-    console.log("server active on port 5000!");
+    console.log("server active on port 5001!");
 })
