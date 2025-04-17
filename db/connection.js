@@ -4,13 +4,7 @@ dotenv.config();
 
 const connection = mysql.createConnection({
  
-  //  host: 'database-1.cdkkuic48dt1.ap-south-1.rds.amazonaws.com', // Replace with your RDS instance endpoint
-  // user: 'admin',               // Replace with your DB username
-  // password: 'm!$tyl!ly<>#($)',           // Replace with your DB password
-  // database: 'e_rupee',                    // The name of your database
-  // port: 3306                              // Default MySQL port
-
-  host: process.env.DB_HOST,     // Use the DB_HOST from the .env file
+   host: process.env.DB_HOST,     // Use the DB_HOST from the .env file
   user: process.env.DB_USER,     // Use the DB_USER from the .env file
   password: process.env.DB_PASSWORD, // Use the DB_PASSWORD from the .env file
   database: process.env.DB_NAME, // Use the DB_NAME from the .env file
