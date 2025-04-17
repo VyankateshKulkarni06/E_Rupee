@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../../db/connection");
+const db = require("../connection");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const secret = require("../../db/secret");
+const secret = require("../secret");
 const saltRounds = 7;
 const { send_otp, verify_otp } = require("../controllers/otp_email");
 
