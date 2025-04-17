@@ -1,10 +1,20 @@
 const mysql = require('mysql2');
+const dotenv = require('D:/DBMS_Project/E_Rupee/backend/node_modules/dotenv');
+dotenv.config();
 
 const connection = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: 'vyankatesh',
-  database: 'E_Rupee'
+ 
+  //  host: 'database-1.cdkkuic48dt1.ap-south-1.rds.amazonaws.com', // Replace with your RDS instance endpoint
+  // user: 'admin',               // Replace with your DB username
+  // password: 'm!$tyl!ly<>#($)',           // Replace with your DB password
+  // database: 'e_rupee',                    // The name of your database
+  // port: 3306                              // Default MySQL port
+
+  host: process.env.DB_HOST,     // Use the DB_HOST from the .env file
+  user: process.env.DB_USER,     // Use the DB_USER from the .env file
+  password: process.env.DB_PASSWORD, // Use the DB_PASSWORD from the .env file
+  database: process.env.DB_NAME, // Use the DB_NAME from the .env file
+  port: process.env.DB_PORT      // Use the DB_PORT from the .env
 });
 
 connection.connect((err) => {
