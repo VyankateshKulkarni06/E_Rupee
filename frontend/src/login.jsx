@@ -46,13 +46,13 @@ function AuthUI() {
     try {
       let url, body;
       if (activeTab === 'login') {
-        url = 'http://localhost:5001/user/login-step1';
+        url = 'https://e-rupee.onrender.com/user/login-step1';
         body = {
           user_name: formData.username,
           email: formData.email,
         };
       } else {
-        url = 'http://localhost:5001/user/register-step1';
+        url = 'https://e-rupee.onrender.com/user/register-step1';
         body = {
           name: formData.fullName,
           user_name: formData.username,
@@ -89,7 +89,7 @@ function AuthUI() {
     try {
       let url, body;
       if (activeTab === 'login') {
-        url = 'http://localhost:5001/user/login-step2';
+        url = 'https://e-rupee.onrender.com/user/login-step2';
         body = {
           user_name: formData.username,
           email: formData.email,
@@ -97,7 +97,7 @@ function AuthUI() {
           password: formData.password,
         };
       } else {
-        url = 'http://localhost:5001/user/register-step2';
+        url = 'https://e-rupee.onrender.com/user/register-step2';
         body = {
           name: formData.fullName,
           user_name: formData.username,

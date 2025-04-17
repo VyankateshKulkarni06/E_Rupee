@@ -31,7 +31,7 @@ function TransactionHistory() {
 
     console.log("Fetching transactions for user:", currentUser);
 
-    axios.get("http://localhost:5001/getHistory", {
+    axios.get("https://e-rupee.onrender.com/getHistory", {
       headers: {
         "Content-Type": "application/json",
         "token": `Bearer ${token}`
