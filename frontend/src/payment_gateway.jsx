@@ -252,7 +252,7 @@ function PaymentDashboard() {
                       onChange={(e) => setTransactionType(e.target.value)}
                       options={[
                         { value: 'extra', label: 'Extra' },
-                        { value: 'standard', label: 'Standard' },
+                        { value: 'normal', label: 'Standard' },
                       ]}
                       name="transactionType"
                     />
