@@ -10,7 +10,10 @@ const getPendingReq=require("./routes/getPendingReq");
 const getBalance=require("./routes/getbalance");
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: 'https://e-rupee.vercel.app',
+    credentials: true // if you're sending cookies or using credentials
+  }));
 app.use("/user",userLogin);
 app.use("/transact",transactions);
 app.use("/get_qr",get_qr);
