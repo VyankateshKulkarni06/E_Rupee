@@ -1,10 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Search, ArrowLeft, User, X } from 'lucide-react';
 import { debounce } from 'lodash';
+import { useNavigate } from 'react-router-dom';
+
 
 function SearchUsername() {
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState([]);
+  const navigate = useNavigate();
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -63,8 +67,9 @@ function SearchUsername() {
     localStorage.setItem('receiver_username', username);
     
     // Navigate to the payment gateway page
-    window.location.href = '/payment';
+    navigate('/payment');
   };
+  
 
   return (
     <div className="min-h-screen bg-white">
