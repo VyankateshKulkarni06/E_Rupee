@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const secret = require("../../db/secret"); 
+const secret = require("../secret"); 
 
 function UserVerification(req, res, next) {
     const token = req.header('token')?.split(' ')[1]; 

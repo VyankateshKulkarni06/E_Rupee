@@ -96,7 +96,7 @@ function PaymentDashboard() {
       };
       console.log("token",token);
 
-      const response = await fetch('http://localhost:5001/transact/transfer', {
+      const response = await fetch('https://e-rupee.onrender.com/transact/transfer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

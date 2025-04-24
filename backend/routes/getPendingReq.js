@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const userVerification=require("../middleware/login_middleware");
-const db=require(".././../db/connection");
+const db=require("../connection");
 
 router.get("/",userVerification, async (req, res) => {
   const user_name=req.user.user_name;

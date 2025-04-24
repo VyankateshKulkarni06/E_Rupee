@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const db = require("../../db/connection");
+const db = require("../connection");
 const userVerification=require("../middleware/login_middleware");
 router.get("/",userVerification, async (req, res) => {
   const user_name= req.user.user_name;
@@ -7,7 +7,7 @@ router.get("/",userVerification, async (req, res) => {
 
 
   try {
-    const userQuery = `SELECT * FROM Payment WHERE sender_username = ? OR receiver_username = ?`;
+    const userQuery = `SELECT * FROM payment WHERE sender_username = ? OR receiver_username = ?`;
     db.query(userQuery, [user_name, user_name], async (err, userResults) => {
       if (err) {
         console.error("DB Error:", err);

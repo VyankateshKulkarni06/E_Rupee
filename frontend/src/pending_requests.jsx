@@ -22,7 +22,7 @@ export default function PendingRequestsPage() {
       try {
         console.log('Fetching pending requests with token:', token);
         
-        const response = await fetch('http://localhost:5001/getPending', {
+        const response = await fetch('https://e-rupee.onrender.com/getPending', {
           headers: {
             'token': `Bearer ${token}`,
           },
@@ -69,11 +69,17 @@ export default function PendingRequestsPage() {
 
   const getStatusDetails = (status) => {
     switch (status) {
+      case 'p':
+        return {
+          text: 'Pending',
+          icon: <Clock className="text-indigo-400" size={20} />,
+          color: 'bg-indigo-50 text-indigo-600'
+        };
       case 'a':
         return {
           text: 'Active',
-          icon: <Clock className="text-indigo-400" size={20} />,
-          color: 'bg-indigo-50 text-indigo-600'
+          icon: <Clock className="text-blue-400" size={20} />,
+          color: 'bg-blue-50 text-blue-600'
         };
       case 'c':
         return {
@@ -104,7 +110,7 @@ export default function PendingRequestsPage() {
     }
     
     try {
-      const response = await fetch('http://localhost:5001/transact/pending_request', {
+      const response = await fetch('https://e-rupee.onrender.com/transact/pending_request', {
         method: 'PUT', // Changed to PUT to match backend route
         headers: {
           'Content-Type': 'application/json',
@@ -241,7 +247,7 @@ export default function PendingRequestsPage() {
                       </div>
                     </div>
 
-                    {request.status === 'a' && (
+                    {request.status === 'p' && (
                       <div className="bg-indigo-50 px-5 py-4 flex justify-end space-x-3">
                         <button
                           onClick={() => handleRequestAction(request.pending_id, 'r')}
