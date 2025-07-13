@@ -113,4 +113,4 @@ npm run dev
 
 ## 📫 Contact
 
-For queries or collaboration, reach out to [Vyankatesh Kulkarni](https://github.com/VyankateshKulkarni06)
+For queries or collaboration, reach out to [Vyankatesh Kulkarni](https://github.com/VyankateshKulkarni06), [Manas Gawali](https://github.com/ManasGawali)
